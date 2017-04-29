@@ -1,3 +1,10 @@
+import logging
+from wsgiref.simple_server import make_server
+
+from awesome_crud import Application, BaseDAO, ControllerFactory
+
+LOG = logging.getLogger(__name__)
+
 class FooDAO(BaseDAO):
     NAME = None
 
@@ -8,7 +15,12 @@ class FooDAO(BaseDAO):
         return {'created': self.NAME}
 
     def query(self, order='asc', offset=0, limit=None):
-        raise HTTPNotImplemented()
+        return [
+            {'query': self.NAME},
+            {'order': order},
+            {'offset': offset},
+            {'limit': limit}
+        ]
 
     def update(self, id_, body):
         return {'update': self.NAME}
@@ -23,16 +35,16 @@ class FooDAO(BaseDAO):
         return {'get': self.NAME}
 
     def bulk_create(self, body):
-        raise HTTPNotImplemented()
+        return {'bulk_create': self.NAME}
 
     def bulk_update(self, body):
-        raise HTTPNotImplemented()
+        return {'bulk_update': self.NAME}
 
     def bulk_patch(self, body):
-        raise HTTPNotImplemented()
+        return {'bulk_patch': self.NAME}
 
     def bulk_delete(self, body):
-        raise HTTPNotImplemented()
+        return {'bulk_delete': self.NAME}
 
 
 class ArticleDAO(FooDAO):
@@ -91,9 +103,8 @@ class SampleApplication(Application):
         super(SampleApplication, self).__init__(app_config)
 
 if __name__ == '__main__':
-    from wsgiref.simple_server import make_server
     logging.basicConfig(level=logging.DEBUG)
     simple_app = SampleApplication()
     httpd = make_server('', 8000, simple_app)
-    print "Serving on port 8000..."
+    LOG.info("Serving on port 8000...")
     httpd.serve_forever()
