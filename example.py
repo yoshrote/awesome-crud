@@ -1,20 +1,35 @@
+"""
+curl -XPOST -d"{}" http://localhost:8000/articles
+curl -XGET -d"{}" http://localhost:8000/articles
+curl -XOPTIONS -d"{}" http://localhost:8000/articles
+curl -XGET -d"{}" http://localhost:8000/articles/100
+curl -XDELETE -d"{}" http://localhost:8000/articles/100
+curl -XPUT -d"{}" http://localhost:8000/articles/100
+curl -XPATCH -d"{}" http://localhost:8000/articles/100
+
+curl -XPOST -d"{}" http://localhost:8000/articles/_bulk
+curl -XPUT -d"{}" http://localhost:8000/articles/_bulk
+curl -XPATCH -d"{}" http://localhost:8000/articles/_bulk
+curl -XDELETE -d"{}" http://localhost:8000/articles/_bulk
+"""
+import json
 import logging
 from wsgiref.simple_server import make_server
 
-from awesome_crud import Application, BaseDAO, ControllerFactory
+from awesome_crud import Application, BaseDAO, Node
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger('example')
 
 class FooDAO(BaseDAO):
-    NAME = None
-
     def __init__(self, request):
         self.request = request
 
     def create(self, body):
-        return {'created': self.NAME}
+        LOG.info('create')
+        return {'create': self.NAME}
 
-    def query(self, order='asc', offset=0, limit=None):
+    def query(self, body, order='asc', offset=0, limit=None):
+        LOG.info('query')
         return [
             {'query': self.NAME},
             {'order': order},
@@ -22,72 +37,77 @@ class FooDAO(BaseDAO):
             {'limit': limit}
         ]
 
-    def update(self, id_, body):
+    def update(self, body):
+        LOG.info('update')
         return {'update': self.NAME}
 
-    def patch(self, id_, body):
+    def patch(self, body):
+        LOG.info('patch')
         return {'patch': self.NAME}
 
-    def delete(self, id_):
+    def delete(self, body):
+        LOG.info('delete')
         return {'delete': self.NAME}
 
-    def get(self, id_):
+    def get(self, body):
+        LOG.info('get')
         return {'get': self.NAME}
 
     def bulk_create(self, body):
+        LOG.info('bulk_create')
         return {'bulk_create': self.NAME}
 
     def bulk_update(self, body):
+        LOG.info('bulk_update')
         return {'bulk_update': self.NAME}
 
     def bulk_patch(self, body):
+        LOG.info('bulk_patch')
         return {'bulk_patch': self.NAME}
 
     def bulk_delete(self, body):
+        LOG.info('bulk_delete')
         return {'bulk_delete': self.NAME}
 
 
 class ArticleDAO(FooDAO):
-    NAME = 'article'
+    NAME = 'articles'
 
 
 class AuthorDAO(FooDAO):
-    NAME = 'author'
+    NAME = 'authors'
 
 
 class TagDAO(FooDAO):
-    NAME = 'tag'
+    NAME = 'tags'
 
 
-class ArticleControllerFactory(ControllerFactory):
-    NAME = 'articles'
+class ArticleNode(Node):
     CONTEXT = ArticleDAO
 
 
-class AuthorControllerFactory(ControllerFactory):
-    NAME = 'authors'
+class AuthorNode(Node):
     CONTEXT = AuthorDAO
 
 
-class TagControllerFactory(ControllerFactory):
-    NAME = 'tags'
+class TagNode(Node):
     CONTEXT = TagDAO
 
 
 class SampleApplication(Application):
     RESOURCE_TREE = {
-        'articles': ArticleControllerFactory({
-            'authors': AuthorControllerFactory({}),
-            'tags': TagControllerFactory({})
+        'articles': ArticleNode({
+            'authors': AuthorNode({}),
+            'tags': TagNode({})
         }),
-        'authors': AuthorControllerFactory({
-            'articles': ArticleControllerFactory({}),
-            'tags': TagControllerFactory({
-                'articles': ArticleControllerFactory({})
+        'authors': AuthorNode({
+            'articles': ArticleNode({}),
+            'tags': TagNode({
+                'articles': ArticleNode({})
             })
         }),
-        'tags': TagControllerFactory({
-            'articles': ArticleControllerFactory({})
+        'tags': TagNode({
+            'articles': ArticleNode({})
         })
     }
 
@@ -96,7 +116,8 @@ class SampleApplication(Application):
             'serialization': {
                 'mime': 'application/json',
                 'serializer': json,
-                'charset': 'utf-8'
+                'charset': 'utf-8',
+                'empty': '{}',
             },
             'db': None,
         }
