@@ -1,5 +1,55 @@
 from . import BaseDao
 
+class EchoDao(BaseDao):
+    def __init__(self, registry):
+        self.registry = registry
+
+    def create(self, url_params, body):
+        LOG.info('create')
+        return {'create': self.NAME}
+
+    def query(self, url_params, query_params):
+        LOG.info('query')
+        return [
+            {'query': self.NAME},
+            {'order': query_params.get('order') or 'asc'},
+            {'offset': int(query_params.get('offset') or 0)},
+            {'limit': query_params.get('limit') or None}
+        ]
+
+    def update(self, url_params, body):
+        LOG.info('update')
+        return {'update': self.NAME}
+
+    def patch(self, url_params, body):
+        LOG.info('patch')
+        return {'patch': self.NAME}
+
+    def delete(self, url_params):
+        LOG.info('delete')
+        return {'delete': self.NAME}
+
+    def get(self, url_params):
+        LOG.info('get')
+        return {'get': self.NAME}
+
+    def bulk_create(self, url_params, body):
+        LOG.info('bulk_create')
+        return {'bulk_create': self.NAME}
+
+    def bulk_update(self, url_params, body):
+        LOG.info('bulk_update')
+        return {'bulk_update': self.NAME}
+
+    def bulk_patch(self, url_params, body):
+        LOG.info('bulk_patch')
+        return {'bulk_patch': self.NAME}
+
+    def bulk_delete(self, url_params, body):
+        LOG.info('bulk_delete')
+        return {'bulk_delete': self.NAME}
+
+
 class MemoryDao(BaseDao):
     DB = {}
 
@@ -40,6 +90,7 @@ class MemoryDao(BaseDao):
     def bulk_delete(self, body):
         for doc in body:
             self.delete(doc['id'])
+
 
 class RedisDao(BaseDao):
     def __init__(self, request, **connection_kwargs):

@@ -1,7 +1,7 @@
 """
 curl -XPOST -d"{}" http://localhost:8000/articles
 curl -XGET -d"{}" http://localhost:8000/articles
-curl -XOPTIONS -d"{}" http://localhost:8000/articles
+curl -XOPTIONS -i -d"{}" http://localhost:8000/articles
 curl -XGET -d"{}" http://localhost:8000/articles/100
 curl -XDELETE -d"{}" http://localhost:8000/articles/100
 curl -XPUT -d"{}" http://localhost:8000/articles/100
@@ -16,69 +16,21 @@ import json
 import logging
 from wsgiref.simple_server import make_server
 
-from awesome_crud import Application, BaseDAO, Node
+from awesome_crud import Application, Node
+from awesome_crud.dao import EchoDao
 
 LOG = logging.getLogger('example')
 
-class FooDAO(BaseDAO):
-    def __init__(self, request):
-        self.request = request
 
-    def create(self, body):
-        LOG.info('create')
-        return {'create': self.NAME}
-
-    def query(self, body, order='asc', offset=0, limit=None):
-        LOG.info('query')
-        return [
-            {'query': self.NAME},
-            {'order': order},
-            {'offset': offset},
-            {'limit': limit}
-        ]
-
-    def update(self, body):
-        LOG.info('update')
-        return {'update': self.NAME}
-
-    def patch(self, body):
-        LOG.info('patch')
-        return {'patch': self.NAME}
-
-    def delete(self, body):
-        LOG.info('delete')
-        return {'delete': self.NAME}
-
-    def get(self, body):
-        LOG.info('get')
-        return {'get': self.NAME}
-
-    def bulk_create(self, body):
-        LOG.info('bulk_create')
-        return {'bulk_create': self.NAME}
-
-    def bulk_update(self, body):
-        LOG.info('bulk_update')
-        return {'bulk_update': self.NAME}
-
-    def bulk_patch(self, body):
-        LOG.info('bulk_patch')
-        return {'bulk_patch': self.NAME}
-
-    def bulk_delete(self, body):
-        LOG.info('bulk_delete')
-        return {'bulk_delete': self.NAME}
-
-
-class ArticleDAO(FooDAO):
+class ArticleDAO(EchoDao):
     NAME = 'articles'
 
 
-class AuthorDAO(FooDAO):
+class AuthorDAO(EchoDao):
     NAME = 'authors'
 
 
-class TagDAO(FooDAO):
+class TagDAO(EchoDao):
     NAME = 'tags'
 
 
@@ -95,6 +47,7 @@ class TagNode(Node):
 
 
 class SampleApplication(Application):
+    # tree nav
     RESOURCE_TREE = {
         'articles': ArticleNode({
             'authors': AuthorNode({}),
@@ -110,6 +63,13 @@ class SampleApplication(Application):
             'articles': ArticleNode({})
         })
     }
+    # flat nav
+    RESOURCE_MAP = {
+        'authors': AuthorNode({}),
+        'articles': ArticleNode({}),
+        'tags': TagNode({}),
+    }
+
 
     def __init__(self):
         app_config = {
@@ -120,6 +80,10 @@ class SampleApplication(Application):
                 'empty': '{}',
             },
             'db': None,
+            'navigation': {
+                'method': 'flat',
+                'config': self.RESOURCE_MAP
+            }
         }
         super(SampleApplication, self).__init__(app_config)
 
