@@ -2,6 +2,7 @@
 curl -XPOST -d"{}" http://localhost:8000/articles
 curl -XGET -d"{}" http://localhost:8000/articles
 curl -XOPTIONS -i -d"{}" http://localhost:8000/articles
+
 curl -XGET -d"{}" http://localhost:8000/articles/100
 curl -XDELETE -d"{}" http://localhost:8000/articles/100
 curl -XPUT -d"{}" http://localhost:8000/articles/100
@@ -21,28 +22,20 @@ from awesome_crud.daos import EchoDao
 
 LOG = logging.getLogger('example')
 
-class ArticleDAO(EchoDao):
-    NAME = 'articles'
+
+def make_node(name, base_dao=EchoDao, base_node=Node):
+    class NewDAO(base_dao):
+        NAME = name
+
+    class NewNode(base_node):
+        CONTEXT = NewDAO
+
+    return NewNode
 
 
-class AuthorDAO(EchoDao):
-    NAME = 'authors'
-
-
-class TagDAO(EchoDao):
-    NAME = 'tags'
-
-
-class ArticleNode(Node):
-    CONTEXT = ArticleDAO
-
-
-class AuthorNode(Node):
-    CONTEXT = AuthorDAO
-
-
-class TagNode(Node):
-    CONTEXT = TagDAO
+ArticleNode = make_node('articles', base_dao=EchoDao)
+AuthorNode = make_node('authors', base_dao=EchoDao)
+TagNode = make_node('tags', base_dao=EchoDao)
 
 
 class SampleApplication(Application):
@@ -68,7 +61,6 @@ class SampleApplication(Application):
         'articles': ArticleNode({}),
         'tags': TagNode({}),
     }
-
 
     def __init__(self):
         app_config = {

@@ -1,4 +1,6 @@
 """
+Small framework for creating RESTful apps.
+
 Create:         POST    /
 Get:            GET     /<id>
 Update:         PUT     /<id>
@@ -17,9 +19,28 @@ Query:          GET     /
         order:  asc         desc|asc
         offset: 0
         limit:  None
+
+
+Response guide: https://i.stack.imgur.com/whhD1.png
+
+# Routing
+When the `Application` receives a request it uses it's `Router` to traverse
+to the correct `Node`. The `Node` will pass
+the request and any data extracted form the URL to the relevant controller.
+The controller then calls the corresponding method on the `BaseDAO` instance
+to handle any querying and persistence operations and returns something which
+can be transformed into a `webob.Response` object.
+
+## Tree routing
+The `Router` uses the resource names extracted to navigate the
+`Application.RESOURCE_TREE` to find the correct `Node`.
+
+## Flat routing
+The final resource name extracted from the URL will determine
+the correct `Node` in the `Application.RESOURCE_MAP`.
+
 """
 from __future__ import unicode_literals
-import json
 import logging
 
 from collections import OrderedDict
@@ -36,7 +57,10 @@ from webob.exc import (
 
 LOG = logging.getLogger(__name__)
 
+
 class BaseController(object):
+    KNOWN_VERBS = ('GET', 'DELETE', 'OPTIONS', 'PATCH', 'POST', 'PUT')
+
     def __init__(self, context):
         self.dispatch = {
             'OPTIONS': self.options
@@ -44,6 +68,9 @@ class BaseController(object):
         self.context = context
 
     def __call__(self, request, url_params):
+        if request.method not in self.KNOWN_VERBS:
+            raise HTTPNotImplemented()
+
         try:
             func = self.dispatch[request.method]
         except KeyError:
@@ -70,7 +97,9 @@ class ResourceController(BaseController):
 
     def create(self, request, url_params):
         LOG.info('create')
-        return self.context(request.registry).create(url_params, request.deserialize_body)
+        return self.context(request.registry).create(
+            url_params, request.deserialize_body
+        )
 
     def query(self, request, url_params):
         LOG.info('query')
@@ -92,11 +121,15 @@ class InstanceController(BaseController):
 
     def update(self, request, url_params):
         LOG.info('update')
-        return self.context(request.registry).update(url_params, request.deserialize_body)
+        return self.context(request.registry).update(
+            url_params, request.deserialize_body
+        )
 
     def patch(self, request, url_params):
         LOG.info('patch')
-        return self.context(request.registry).patch(url_params, request.deserialize_body)
+        return self.context(request.registry).patch(
+            url_params, request.deserialize_body
+        )
 
     def delete(self, request, url_params):
         LOG.info('delete')
@@ -119,19 +152,27 @@ class BulkController(BaseController):
 
     def create(self, request, url_params):
         LOG.info('bulk_create')
-        return self.context(request.registry).bulk_create(url_params, request.deserialize_body)
+        return self.context(request.registry).bulk_create(
+            url_params, request.deserialize_body
+        )
 
     def update(self, request, url_params):
         LOG.info('bulk_update')
-        return self.context(request.registry).bulk_update(url_params, request.deserialize_body)
+        return self.context(request.registry).bulk_update(
+            url_params, request.deserialize_body
+        )
 
     def patch(self, request, url_params):
         LOG.info('bulk_patch')
-        return self.context(request.registry).bulk_patch(url_params, request.deserialize_body)
+        return self.context(request.registry).bulk_patch(
+            url_params, request.deserialize_body
+        )
 
     def delete(self, request, url_params):
         LOG.info('bulk_delete')
-        return self.context(request.registry).bulk_delete(url_params, request.deserialize_body)
+        return self.context(request.registry).bulk_delete(
+            url_params, request.deserialize_body
+        )
 
 
 class Router(object):
@@ -165,7 +206,7 @@ class Router(object):
         if pair:
             pair.append(None)
             yield tuple(pair)
-  
+
     def _nav_tree(self, path):
         bulk = False
         url_params = OrderedDict()
@@ -200,7 +241,7 @@ class Router(object):
             raise HTTPNotFound()
 
         node
-        
+
         return node, url_params, bulk
 
     def route(self, request):
