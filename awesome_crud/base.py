@@ -70,17 +70,14 @@ class ResourceController(BaseController):
 
     def create(self, request, url_params):
         LOG.info('create')
-        return self.context(request).create(url_params)
+        return self.context(request.registry).create(url_params, request.deserialize_body)
 
     def query(self, request, url_params):
-        return self.context(request).query(
+        LOG.info('query')
+        return self.context(request.registry).query(
             url_params,
-            order=request.GET.get('order', 'asc'),
-            offset=int(request.GET.get('offset') or 0),
-            limit=(
-                int(request.GET.get('limit'))
-                if request.GET.get('limit')
-                else None))
+            request.GET
+        )
 
 
 class InstanceController(BaseController):
@@ -95,19 +92,19 @@ class InstanceController(BaseController):
 
     def update(self, request, url_params):
         LOG.info('update')
-        return self.context(request).update(url_params)
+        return self.context(request.registry).update(url_params, request.deserialize_body)
 
     def patch(self, request, url_params):
         LOG.info('patch')
-        return self.context(request).patch(url_params)
+        return self.context(request.registry).patch(url_params, request.deserialize_body)
 
     def delete(self, request, url_params):
         LOG.info('delete')
-        return self.context(request).delete(url_params)
+        return self.context(request.registry).delete(url_params)
 
     def get(self, request, url_params):
         LOG.info('get')
-        return self.context(request).get(url_params)
+        return self.context(request.registry).get(url_params)
 
 
 class BulkController(BaseController):
@@ -122,27 +119,38 @@ class BulkController(BaseController):
 
     def create(self, request, url_params):
         LOG.info('bulk_create')
-        return self.context(request).bulk_create(url_params)
+        return self.context(request.registry).bulk_create(url_params, request.deserialize_body)
 
     def update(self, request, url_params):
         LOG.info('bulk_update')
-        return self.context(request).bulk_update(url_params)
+        return self.context(request.registry).bulk_update(url_params, request.deserialize_body)
 
     def patch(self, request, url_params):
         LOG.info('bulk_patch')
-        return self.context(request).bulk_patch(url_params)
+        return self.context(request.registry).bulk_patch(url_params, request.deserialize_body)
 
     def delete(self, request, url_params):
         LOG.info('bulk_delete')
-        return self.context(request).bulk_delete(url_params)
+        return self.context(request.registry).bulk_delete(url_params, request.deserialize_body)
 
 
 class Router(object):
     BULK_ROUTE = '_bulk'
 
-    def __init__(self, root, resource_tree):
+    def __init__(self, root, resource_tree, navigation='flat'):
         self.resource_tree = resource_tree
         self.root = root
+
+        nav_map = {
+            'flat': self._nav_flat,
+            'tree': self._nav_tree,
+        }
+        try:
+            self.navigation = nav_map[navigation]
+        except KeyError as nav_method:
+            raise RuntimeError(
+                'Invalid navigation method: {}'.format(nav_method)
+            )
 
     @staticmethod
     def pairwise(iterable):
@@ -157,20 +165,10 @@ class Router(object):
         if pair:
             pair.append(None)
             yield tuple(pair)
-
-    def route(self, request):
-        path = request.path_info.split('/')
-        if path[0] == '':
-            path = path[1:]
-
-        if not path and self.root:
-            return self.root(request)
-        elif not path:
-            raise HTTPNotFound()
-
+  
+    def _nav_tree(self, path):
         bulk = False
         url_params = OrderedDict()
-        LOG.debug("route pairs: %s", list(self.pairwise(path)))
         node = self.resource_tree
         for resource_name, id_ in self.pairwise(path):
             # get controller
@@ -184,6 +182,39 @@ class Router(object):
                 bulk = True
             elif id_ is not None:
                 url_params[resource_name] = id_
+        return node, url_params, bulk
+
+    def _nav_flat(self, path):
+        bulk = False
+        url_params = OrderedDict()
+        for resource_name, id_ in self.pairwise(path):
+            # parse url_params
+            if id_ == self.BULK_ROUTE:
+                bulk = True
+            elif id_ is not None:
+                url_params[resource_name] = id_
+
+        try:
+            node = self.resource_tree[resource_name]
+        except KeyError:
+            raise HTTPNotFound()
+
+        node
+        
+        return node, url_params, bulk
+
+    def route(self, request):
+        path = request.path_info.split('/')
+        if path[0] == '':
+            path = path[1:]
+
+        if not path and self.root:
+            return self.root(request)
+        elif not path:
+            raise HTTPNotFound()
+
+        LOG.debug("route pairs: %s", list(self.pairwise(path)))
+        node, url_params, bulk = self.navigation(path)
 
         return node(request, url_params, bulk=bulk)
 
@@ -192,11 +223,16 @@ class Node(object):
     # class to manage accessing object
     CONTEXT = None
 
+    # shims
+    BulkController = BulkController
+    ResourceController = ResourceController
+    InstanceController = InstanceController
+
     def __init__(self, resource_tree):
         self.resource_tree = resource_tree
-        self.bulk_controller = BulkController(self.CONTEXT)
-        self.resource_controller = ResourceController(self.CONTEXT)
-        self.instance_controller = InstanceController(self.CONTEXT)
+        self.bulk_controller = self.BulkController(self.CONTEXT)
+        self.resource_controller = self.ResourceController(self.CONTEXT)
+        self.instance_controller = self.InstanceController(self.CONTEXT)
 
     def __call__(self, request, url_params, bulk=False):
     	LOG.debug('request: %s', request.params)
@@ -247,45 +283,37 @@ class BaseDAO(object):
     # routing and parameter key
     NAME = None
 
-    def __init__(self, request):
-        self.request = request
+    def __init__(self, registry):
+        self.registry = registry
 
-    @staticmethod
-    def serialize_body(request):
-        body = request.body if request.body else request.serialized_empty
-        try:
-            return request.serializer.loads(body)
-        except ValueError:
-            raise HTTPBadRequest(detail='could not serialize body')
-
-    def create(self, body):
+    def create(self, url_params, body):
         raise HTTPNotImplemented()
 
-    def query(self, body, order='asc', offset=0, limit=None):
+    def query(self, url_params, query_params):
         raise HTTPNotImplemented()
 
-    def update(self, body):
+    def get(self, url_params):
         raise HTTPNotImplemented()
 
-    def patch(self, body):
+    def delete(self, url_params):
         raise HTTPNotImplemented()
 
-    def delete(self, body):
+    def update(self, url_params, body):
         raise HTTPNotImplemented()
 
-    def get(self, body):
+    def patch(self, url_params, body):
         raise HTTPNotImplemented()
 
-    def bulk_create(self, body):
+    def bulk_create(self, url_params, body):
         raise HTTPNotImplemented()
 
-    def bulk_update(self, body):
+    def bulk_update(self, url_params, body):
         raise HTTPNotImplemented()
 
-    def bulk_patch(self, body):
+    def bulk_patch(self, url_params, body):
         raise HTTPNotImplemented()
 
-    def bulk_delete(self, body):
+    def bulk_delete(self, url_params, body):
         raise HTTPNotImplemented()
 
 
@@ -305,6 +333,15 @@ class AwesomeRequest(Request):
     @property
     def serialized_empty(self):
         return self.registry['serialization']['empty']
+
+    @property
+    def deserialize_body(self):
+        body = self.body if self.body else self.serialized_empty
+        try:
+            return self.serializer.loads(body)
+        except ValueError:
+            raise HTTPBadRequest(detail='could not serialize body')
+
 
 class Application(object):
     RESOURCE_TREE = None
