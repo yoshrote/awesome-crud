@@ -1,4 +1,8 @@
+import logging
+
 from .base import BaseDAO
+
+LOG = logging.getLogger(__name__)
 
 class EchoDao(BaseDAO):
     def __init__(self, registry):
