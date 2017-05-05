@@ -17,10 +17,9 @@ import logging
 from wsgiref.simple_server import make_server
 
 from awesome_crud import Application, Node
-from awesome_crud.dao import EchoDao
+from awesome_crud.daos import EchoDao
 
 LOG = logging.getLogger('example')
-
 
 class ArticleDAO(EchoDao):
     NAME = 'articles'

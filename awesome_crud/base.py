@@ -235,9 +235,9 @@ class Node(object):
         self.instance_controller = self.InstanceController(self.CONTEXT)
 
     def __call__(self, request, url_params, bulk=False):
-    	LOG.debug('request: %s', request.params)
-    	LOG.debug('url_params: %s', url_params)
-    	LOG.debug('bulk: %s', bulk)
+        LOG.debug('request: %s', request.deserialize_body)
+        LOG.debug('url_params: %s', url_params)
+        LOG.debug('bulk: %s', bulk)
         if url_params.get(self.CONTEXT.NAME) is None and bulk:
             return self.wrap(
                 request,
@@ -358,3 +358,5 @@ class Application(object):
             return self.router.route(request)
         except HTTPException as exc:
             return exc
+
+__all__ = ['Application', 'Node', 'BaseDAO']

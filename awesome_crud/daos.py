@@ -1,6 +1,6 @@
-from . import BaseDao
+from .base import BaseDAO
 
-class EchoDao(BaseDao):
+class EchoDao(BaseDAO):
     def __init__(self, registry):
         self.registry = registry
 
@@ -50,7 +50,7 @@ class EchoDao(BaseDao):
         return {'bulk_delete': self.NAME}
 
 
-class MemoryDao(BaseDao):
+class MemoryDao(BaseDAO):
     DB = {}
 
     @property
@@ -92,7 +92,7 @@ class MemoryDao(BaseDao):
             self.delete(doc['id'])
 
 
-class RedisDao(BaseDao):
+class RedisDao(BaseDAO):
     def __init__(self, request, **connection_kwargs):
         import redis
         super(RedisDao, self).__init__(request)
