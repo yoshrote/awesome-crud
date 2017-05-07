@@ -1,12 +1,59 @@
 import logging
 
-from .base import BaseDAO
+from webob.exc import HTTPNotImplemented
 
 LOG = logging.getLogger(__name__)
+
+
+class BaseDAO(object):
+    # routing and parameter key
+    NAME = None
+
+    def __init__(self, registry):
+        self.registry = registry
+
+    @classmethod
+    def get_pk(cls, resource):
+        raise NotImplementedError('get_pk')
+
+    def create(self, url_params, body):
+        raise HTTPNotImplemented()
+
+    def query(self, url_params, query_params):
+        raise HTTPNotImplemented()
+
+    def get(self, url_params):
+        raise HTTPNotImplemented()
+
+    def delete(self, url_params):
+        raise HTTPNotImplemented()
+
+    def update(self, url_params, body):
+        raise HTTPNotImplemented()
+
+    def patch(self, url_params, body):
+        raise HTTPNotImplemented()
+
+    def bulk_create(self, url_params, body):
+        raise HTTPNotImplemented()
+
+    def bulk_update(self, url_params, body):
+        raise HTTPNotImplemented()
+
+    def bulk_patch(self, url_params, body):
+        raise HTTPNotImplemented()
+
+    def bulk_delete(self, url_params, body):
+        raise HTTPNotImplemented()
+
 
 class EchoDao(BaseDAO):
     def __init__(self, registry):
         self.registry = registry
+
+    @classmethod
+    def get_pk(cls, resource):
+        return resource.get('id', '<unknown>')
 
     def create(self, url_params, body):
         LOG.info('create')
@@ -60,38 +107,40 @@ class MemoryDao(BaseDAO):
     @property
     def db(self):
         return self.__class__.DB
-    
-    def create(self, body):
-        self.db[body['id']] = body
 
-    def query(self, body, order='asc', offset=0, limit=None):
-        raise HTTPNotImplemented()
-
-    def update(self, id_, body):
+    def create(self, url_params, body):
+        id_ = url_params[self.NAME]
         self.db[id_] = body
 
-    def patch(self, id_, body):
+    def update(self, url_params, body):
+        id_ = url_params[self.NAME]
+        self.db[id_] = body
+
+    def patch(self, url_params, body):
+        id_ = url_params[self.NAME]
         self.db[id_].update(body)
 
-    def delete(self, id_):
+    def delete(self, url_params):
+        id_ = url_params[self.NAME]
         del self.db[id_]
 
-    def get(self, id_):
+    def get(self, url_params):
+        id_ = url_params[self.NAME]
         return self.db[id_]
 
-    def bulk_create(self, body):
+    def bulk_create(self, url_params, body):
         for doc in body:
             self.create(doc)
 
-    def bulk_update(self, body):
+    def bulk_update(self, url_params, body):
         for doc in body:
             self.update(doc['id'], doc)
 
-    def bulk_patch(self, body):
+    def bulk_patch(self, url_params, body):
         for doc in body:
             self.patch(doc['id'], doc)
 
-    def bulk_delete(self, body):
+    def bulk_delete(self, url_params, body):
         for doc in body:
             self.delete(doc['id'])
 
@@ -102,49 +151,50 @@ class RedisDao(BaseDAO):
         super(RedisDao, self).__init__(request)
         self.connection = redis.StrictRedis(**connection_kwargs)
 
-    def create(self, body, pipeline=None):
+    def create(self, url_params, body, pipeline=None):
         pipe = pipeline or self.connection
         pipe.set(body['id'], body)
 
-    def query(self, body, order='asc', offset=0, limit=None):
-        raise HTTPNotImplemented()
-
-    def update(self, id_, body, pipeline=None):
+    def update(self, url_params, body, pipeline=None):
+        id_ = url_params[self.NAME]
         pipe = pipeline or self.connection
         pipe.set(id_, body)
 
-    def patch(self, id_, body, pipeline=None):
-        current = self.get(_id)
+    def patch(self, url_params, body, pipeline=None):
+        id_ = url_params[self.NAME]
+        current = self.get(id_)
         current.update(body)
         self.update(id_, body)
 
-    def delete(self, id_, pipeline=None):
+    def delete(self, url_params, pipeline=None):
+        id_ = url_params[self.NAME]
         pipe = pipeline or self.connection
         pipe.delete(id_)
 
-    def get(self, id_, pipeline=None):
+    def get(self, url_params, pipeline=None):
+        id_ = url_params[self.NAME]
         pipe = pipeline or self.connection
         pipe.get(id_)
 
-    def bulk_create(self, body):
+    def bulk_create(self, url_params, body):
         pipe = self.connection.pipeline()
         for doc in body:
             self.create(doc, pipeline=pipe)
         pipe.execute()
 
-    def bulk_update(self, body):
+    def bulk_update(self, url_params, body):
         pipe = self.connection.pipeline()
         for doc in body:
             self.update(doc['id'], doc, pipeline=pipe)
         pipe.execute()
 
-    def bulk_patch(self, body):
+    def bulk_patch(self, url_params, body):
         pipe = self.connection.pipeline()
         for doc in body:
             self.patch(doc['id'], doc, pipeline=pipe)
         pipe.execute()
 
-    def bulk_delete(self, body):
+    def bulk_delete(self, url_params, body):
         pipe = self.connection.pipeline()
         for doc in body:
             self.delete(doc['id'], pipeline=pipe)

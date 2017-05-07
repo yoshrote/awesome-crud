@@ -1,17 +1,17 @@
 """
-curl -XPOST -d"{}" http://localhost:8000/articles
-curl -XGET -d"{}" http://localhost:8000/articles
-curl -XOPTIONS -i -d"{}" http://localhost:8000/articles
+curl -XPOST -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles
+curl -XGET -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles
+curl -XOPTIONS -H "Accept: application/json" -H "Content-type: application/json" -i -d"{}" http://localhost:8000/articles
 
-curl -XGET -d"{}" http://localhost:8000/articles/100
-curl -XDELETE -d"{}" http://localhost:8000/articles/100
-curl -XPUT -d"{}" http://localhost:8000/articles/100
-curl -XPATCH -d"{}" http://localhost:8000/articles/100
+curl -XGET -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/100
+curl -XDELETE -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/100
+curl -XPUT -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/100
+curl -XPATCH -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/100
 
-curl -XPOST -d"{}" http://localhost:8000/articles/_bulk
-curl -XPUT -d"{}" http://localhost:8000/articles/_bulk
-curl -XPATCH -d"{}" http://localhost:8000/articles/_bulk
-curl -XDELETE -d"{}" http://localhost:8000/articles/_bulk
+curl -XPOST -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/_bulk
+curl -XPUT -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/_bulk
+curl -XPATCH -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/_bulk
+curl -XDELETE -H "Accept: application/json" -H "Content-type: application/json" -d"{}" http://localhost:8000/articles/_bulk
 """
 import json
 import logging
@@ -65,10 +65,11 @@ class SampleApplication(Application):
     def __init__(self):
         app_config = {
             'serialization': {
-                'mime': 'application/json',
-                'serializer': json,
-                'charset': 'utf-8',
-                'empty': '{}',
+                'application/json': {
+                    'serializer': json,
+                    'charset': 'utf-8',
+                    'empty': '{}',
+                }
             },
             'db': None,
             'navigation': {
