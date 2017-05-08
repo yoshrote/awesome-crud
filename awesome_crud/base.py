@@ -88,14 +88,14 @@ class Application(object):
         except HTTPException as exc:
             return exc
 
-        func = self.wrap_up(request, node, url_params, flags, layers=reversed([
+        func = self.wrap_up(request, node, url_params, flags, layers=[
             self.session, self.authentication, self.authorization, self.caching
-        ]))
+        ])
         return func()
 
     @staticmethod
     def wrap_up(request, node, url_params, flags, layers=None):
-        layers = layers or []
+        layers = reversed(layers or [])
         base = partial(node, request, url_params, **flags)
         for layer in layers:
             base = partial(layer, base, request, url_params, flags)

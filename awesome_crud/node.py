@@ -165,7 +165,7 @@ class Node(object):
         self.instance_controller = self.InstanceController(self.CONTEXT)
 
     def __call__(self, request, url_params, bulk=False):
-        LOG.debug('request: %s', request.deserialize_body)
+        LOG.debug('request: %s', request)
         LOG.debug('url_params: %s', url_params)
         LOG.debug('bulk: %s', bulk)
         if url_params.get(self.CONTEXT.NAME) is None and bulk:

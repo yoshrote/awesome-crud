@@ -1,10 +1,17 @@
+import logging
+
+LOG = logging.getLogger(__name__)
+
+
 class BaseSession(object):
     def __init__(self, app_config):
         self.app_config = app_config
 
     def __call__(self, node, request, url_params, flags):
+        LOG.info('load')
         request = self.load(request)
         response = node()
+        LOG.info('store')
         response = self.store(request, response)
         return response
 

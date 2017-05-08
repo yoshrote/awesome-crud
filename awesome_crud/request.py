@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import logging
 
 from webob import Request, Response
-from webob.acceptparse import Accept
+from webob.acceptparse import MIMEAccept
 from webob.exc import (
     HTTPBadRequest,
     HTTPNotAcceptable,
@@ -50,7 +50,9 @@ class AwesomeRequest(Request):
 
     @property
     def deserialize_body(self):
-        input_mime = Accept(';'.join(self.registry['serialization'].keys()))
+        input_mime = MIMEAccept(
+            ';'.join(self.registry['serialization'].keys())
+        )
         if self.content_type not in input_mime:
             raise HTTPNotAcceptable()
 

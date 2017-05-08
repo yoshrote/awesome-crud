@@ -1,3 +1,8 @@
+import logging
+
+LOG = logging.getLogger(__name__)
+
+
 class BaseAuthorization(object):
     def __init__(self, app_config):
         self.app_config = app_config
@@ -9,8 +14,10 @@ class BaseAuthorization(object):
         raise NotImplementedError()
 
     def __call__(self, node, request, url_params, flags):
+        LOG.info('pre-processing')
         request = self.pre_process(request, node, url_params, flags)
         response = node()
+        LOG.info('post-processing')
         response = self.post_process(response, node, url_params, flags)
         return response
 

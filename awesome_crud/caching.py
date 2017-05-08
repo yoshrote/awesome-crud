@@ -1,6 +1,9 @@
+import logging
 import hashlib
 
 from webob.exc import HTTPNotModified
+
+LOG = logging.getLogger(__name__)
 
 
 class BaseCaching(object):
@@ -8,10 +11,13 @@ class BaseCaching(object):
         self.app_config = app_config
 
     def __call__(self, node, request, url_params, flags):
+        LOG.info('checking cache')
         response = self.lookup(request, node, url_params)
         if response:
+            LOG.info('cache found')
             return response
         response = node()
+        LOG.info('updating cache')
         response = self.store(request, response)
         return response
 
